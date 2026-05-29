@@ -1,39 +1,192 @@
-# Credit Card Expense Tracker API
+# Security & Authentication
 
-## Authentication Strategy
+Our API uses a **Dual-Mode Authentication** strategy to support both **web browsers** and **mobile apps (React Native / Expo)** safely.
 
-Our API supports a **Dual-Mode Authentication** strategy to handle both Web browsers and Mobile apps (React Native / Expo) securely.
+### Web Strategy
 
-### 1. Access Token Usage (Bearer Authentication)
+Uses **httpOnly cookies** for automatic session management.
 
-For all protected routes, include the Access Token in the `Authorization` header.
+No manual token handling is required in browsers.
 
-**Protected Routes Include:**
-- `GET /api/auth/me`
-- `GET /api/cards`
-- `POST /api/transactions`
-- ... and all other private resources.
+After login:
 
-#### Example: Fetching Cards (Mobile / React Native)
-```javascript
-const response = await fetch('https://api.example.com/api/cards', {
-  method: 'GET',
-  headers: {
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json'
+* secure cookie is automatically set
+* browser automatically sends cookie in future requests
+* refresh is handled server-side
+
+---
+
+### Mobile Strategy (React Native / Expo)
+
+Mobile apps use:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+Tokens are returned in the login/refresh response body and should be stored securely.
+
+Recommended storage:
+
+* Access Token → secure storage or memory
+* Refresh Token → secure storage only
+
+Recommended secure storage:
+
+* Expo SecureStore
+* Encrypted storage solution
+
+---
+
+### Access Token
+
+**Type:** JWT
+**Expiry:** 1 hour
+
+Purpose:
+
+Used for **all protected API requests**.
+
+Protected routes include:
+
+```txt
+GET /api/auth/me
+GET /api/cards
+POST /api/cards
+PATCH /api/cards/:id
+DELETE /api/cards/:id
+GET /api/transactions
+POST /api/transactions
+PATCH /api/transactions/:id
+DELETE /api/transactions/:id
+```
+
+### Example Protected Request
+
+```http
+GET /api/cards
+Authorization: Bearer eyJhbGciOiJIUzI1Ni...
+```
+
+### JavaScript / React Native Example
+
+```ts
+const response = await fetch(
+  `${API_URL}/api/cards`,
+  {
+    method: 'GET',
+    headers: {
+      Authorization:
+        `Bearer ${accessToken}`,
+      'Content-Type':
+        'application/json',
+    },
   }
-});
+)
 
-const data = await response.json();
+const data =
+  await response.json()
 ```
 
 ---
 
-### 2. Token Expiration Handling
+### Refresh Token
 
-If your access token expires, the server will return a **401 Unauthorized** response with a specific error code.
+**Type:** UUID
+**Expiry:** 30 days
 
-**Response Body:**
+Purpose:
+
+Used only for:
+
+1. **Access token refresh**
+2. **App restart login restoration**
+3. **Logout / token revocation**
+
+Refresh tokens are stored in the database and can be revoked for security.
+
+---
+
+## Login Flow
+
+### Step 1 — Login
+
+Request:
+
+```http
+POST /api/auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "securepassword123"
+}
+```
+
+Response:
+
+```json
+{
+  "message": "Login successful",
+  "accessToken": "jwt-token-string",
+  "refreshToken": "uuid-refresh-token",
+  "user": {
+    "id": "uuid-v4",
+    "email": "user@example.com",
+    "name": "John Doe"
+  }
+}
+```
+
+Save:
+
+```txt
+access_token
+refresh_token
+```
+
+securely on device.
+
+---
+
+## Access Token Usage
+
+For protected requests:
+
+```http
+GET /api/cards
+Authorization: Bearer <accessToken>
+```
+
+Example:
+
+```http
+GET /api/transactions
+Authorization: Bearer eyJhbGciOiJIUzI1Ni...
+```
+
+Do **NOT** send refresh token here.
+
+---
+
+## Access Token Expired Flow
+
+If the access token expires:
+
+Protected request:
+
+```http
+GET /api/cards
+Authorization: Bearer expired-token
+```
+
+Response:
+
+HTTP 401
+
 ```json
 {
   "success": false,
@@ -42,57 +195,151 @@ If your access token expires, the server will return a **401 Unauthorized** resp
 }
 ```
 
-When you see `code: "TOKEN_EXPIRED"`, you should trigger the **Refresh Flow**.
+Now call refresh endpoint.
 
 ---
 
-### 3. Refresh Token Flow
+## Refresh Token Usage
 
-Use your saved `refreshToken` to obtain a new pair of tokens. This should be done automatically by your API client (e.g., using an Axios interceptor).
+Request:
 
-#### Example: Refreshing Tokens
-```javascript
-const response = await fetch('https://api.example.com/api/auth/refresh', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    refreshToken: savedRefreshToken
-  })
-});
+```http
+POST /api/auth/refresh
+Content-Type: application/json
+```
 
-const data = await response.json();
+Body:
+
+```json
+{
+  "refreshToken":
+    "saved-refresh-token"
+}
+```
+
+Response:
+
+```json
+{
+  "accessToken":
+    "new-jwt-token",
+  "refreshToken":
+    "new-refresh-token"
+}
+```
+
+Save new tokens and retry the failed request.
+
+### React Native Example
+
+```ts
+const response = await fetch(
+  `${API_URL}/api/auth/refresh`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type':
+        'application/json',
+    },
+    body: JSON.stringify({
+      refreshToken,
+    }),
+  }
+)
+
+const data =
+  await response.json()
 
 if (response.ok) {
-  // Save the new tokens
-  const { accessToken, refreshToken } = data;
-  saveTokens(accessToken, refreshToken);
-  
-  // Retry the original failed request with the new accessToken
-} else {
-  // Refresh token is also expired or invalid -> Force logout
-  logoutUser();
+  saveAccessToken(
+    data.accessToken
+  )
+
+  saveRefreshToken(
+    data.refreshToken
+  )
 }
 ```
 
 ---
 
-### 4. Full Authentication Lifecycle (Mobile)
+## App Restart Login Restoration
 
-1. **Login**: `POST /api/auth/login` returns `accessToken` and `refreshToken`.
-2. **Store**: Save both tokens securely (e.g., Expo SecureStore).
-3. **Request**: Use `accessToken` in the `Authorization: Bearer <token>` header.
-4. **Expiry**: If 401 + `TOKEN_EXPIRED`, call `POST /api/auth/refresh`.
-5. **Update**: Store the new tokens returned by the refresh endpoint.
-6. **Retry**: Repeat the original request.
-7. **Logout**: `POST /api/auth/logout` with `refreshToken` to revoke the session server-side.
+When app opens:
+
+### Step 1
+
+Read saved `refreshToken`.
+
+### Step 2
+
+Call:
+
+```http
+POST /api/auth/refresh
+```
+
+### Step 3
+
+Save returned access token.
+
+### Step 4
+
+Call:
+
+```http
+GET /api/auth/me
+Authorization:
+Bearer <accessToken>
+```
+
+If successful:
+
+→ restore user session
+
+If failed:
+
+→ redirect to login
 
 ---
 
-## Web / Browser Usage
+## Logout Flow
 
-For web browsers, the API automatically sets an **httpOnly cookie** named `token` upon login or refresh.
-- Browser will send this cookie automatically with every request.
-- No manual `Authorization` header is required for web clients.
-- Refresh logic is still available via the `/api/auth/refresh` endpoint if needed for SPA state management.
+Request:
+
+```http
+POST /api/auth/logout
+```
+
+Body:
+
+```json
+{
+  "refreshToken":
+    "saved-refresh-token"
+}
+```
+
+Server:
+
+* revokes refresh token
+* clears session cookie (web)
+
+App should:
+
+* delete saved tokens
+* redirect to login screen
+
+---
+
+## Authentication Rules
+
+✅ Access Token → Protected API requests
+
+✅ Refresh Token → Refresh & Logout only
+
+❌ Never send both tokens in normal requests
+
+❌ Never store tokens in plain local storage
+
+❌ Never expose refresh token in logs
