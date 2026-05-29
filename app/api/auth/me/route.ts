@@ -12,7 +12,14 @@ export async function GET() {
   try {
     const userId = (await headers()).get('x-user-id');
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED' 
+        }, 
+        { status: 401 }
+      );
     }
 
     const [user] = await db
@@ -22,7 +29,14 @@ export async function GET() {
       .limit(1);
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'User not found',
+          code: 'USER_NOT_FOUND' 
+        }, 
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({ user });

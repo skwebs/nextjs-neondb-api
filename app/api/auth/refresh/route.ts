@@ -8,7 +8,14 @@ export async function POST(req: Request) {
     const { refreshToken } = await req.json();
 
     if (!refreshToken) {
-      return NextResponse.json({ error: 'Refresh token required' }, { status: 400 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Refresh token required',
+          code: 'REFRESH_TOKEN_REQUIRED' 
+        }, 
+        { status: 400 }
+      );
     }
 
     const userAgent = req.headers.get('user-agent') || undefined;
@@ -17,7 +24,14 @@ export async function POST(req: Request) {
     const tokens = await rotateTokens(refreshToken, userAgent, ipAddress);
 
     if (!tokens) {
-      return NextResponse.json({ error: 'Invalid or expired refresh token' }, { status: 401 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Invalid or expired refresh token',
+          code: 'INVALID_REFRESH_TOKEN' 
+        }, 
+        { status: 401 }
+      );
     }
 
     // Update cookie for web compatibility

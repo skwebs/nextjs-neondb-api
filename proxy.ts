@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyJWT, getToken } from '@/lib/auth';
 
-export async function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes
@@ -20,13 +20,38 @@ export async function proxy(request: NextRequest) {
   const token = getToken(request);
 
   if (!token) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED' 
+      }, 
+      { status: 401 }
+    );
   }
 
-  const payload = await verifyJWT(token);
+  const { payload, error } = await verifyJWT(token);
+
+  if (error === 'TOKEN_EXPIRED') {
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Access token expired',
+        code: 'TOKEN_EXPIRED' 
+      }, 
+      { status: 401 }
+    );
+  }
 
   if (!payload) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Invalid access token',
+        code: 'INVALID_TOKEN' 
+      }, 
+      { status: 401 }
+    );
   }
 
   // Add userId to headers so routes can access it easily

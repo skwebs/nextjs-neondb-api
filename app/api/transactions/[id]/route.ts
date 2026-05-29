@@ -16,7 +16,16 @@ export async function PATCH(
 ) {
   try {
     const userId = (await headers()).get('x-user-id');
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED' 
+        }, 
+        { status: 401 }
+      );
+    }
 
     const { id } = await params;
     const body = await req.json();
@@ -30,7 +39,14 @@ export async function PATCH(
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Transaction not found',
+          code: 'NOT_FOUND' 
+        }, 
+        { status: 404 }
+      );
     }
 
     // 2. Check if current cycle is locked
@@ -43,7 +59,9 @@ export async function PATCH(
 
       if (cycle && cycle.status !== 'running') {
         return NextResponse.json({ 
-          error: `Cannot update transaction in a ${cycle.status} billing cycle.` 
+          success: false,
+          message: `Cannot update transaction in a ${cycle.status} billing cycle.`,
+          code: 'FORBIDDEN'
         }, { status: 403 });
       }
     }
@@ -68,7 +86,9 @@ export async function PATCH(
        const newCycle = await getOrCreateCycle(existing.cardId, settlementDate!);
        if (newCycle.status !== 'running') {
          return NextResponse.json({ 
-           error: `Cannot move transaction to a ${newCycle.status} billing cycle.` 
+           success: false,
+           message: `Cannot move transaction to a ${newCycle.status} billing cycle.`,
+           code: 'FORBIDDEN'
          }, { status: 403 });
        }
        billingCycleId = newCycle.id;
@@ -98,7 +118,16 @@ export async function DELETE(
 ) {
   try {
     const userId = (await headers()).get('x-user-id');
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED' 
+        }, 
+        { status: 401 }
+      );
+    }
 
     const { id } = await params;
 
@@ -110,7 +139,14 @@ export async function DELETE(
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Transaction not found',
+          code: 'NOT_FOUND' 
+        }, 
+        { status: 404 }
+      );
     }
 
     if (existing.billingCycleId) {
@@ -122,7 +158,9 @@ export async function DELETE(
 
       if (cycle && cycle.status !== 'running') {
         return NextResponse.json({ 
-          error: `Cannot delete transaction from a ${cycle.status} billing cycle.` 
+          success: false,
+          message: `Cannot delete transaction from a ${cycle.status} billing cycle.`,
+          code: 'FORBIDDEN'
         }, { status: 403 });
       }
     }

@@ -23,12 +23,26 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (!user) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Invalid credentials',
+          code: 'INVALID_CREDENTIALS' 
+        }, 
+        { status: 401 }
+      );
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Invalid credentials',
+          code: 'INVALID_CREDENTIALS' 
+        }, 
+        { status: 401 }
+      );
     }
 
     const userAgent = req.headers.get('user-agent') || undefined;

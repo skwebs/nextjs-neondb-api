@@ -18,7 +18,9 @@ export function handleApiError(error: unknown) {
 
   if (error instanceof Error) {
     // Check both the error and its cause for the DB error code
-    const errCode = (error as any).code || (error.cause as any)?.code;
+    const errObj = error as unknown as Record<string, unknown>;
+    const causeObj = (error.cause as unknown as Record<string, unknown>) || {};
+    const errCode = errObj.code || causeObj.code;
 
     // Database Conflict (e.g., Unique Constraint)
     if (errCode === '23505') {

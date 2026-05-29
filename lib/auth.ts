@@ -66,12 +66,15 @@ export async function rotateTokens(oldRefreshToken: string, userAgent?: string, 
   return await generateTokens(session.userId, userAgent, ipAddress);
 }
 
-export async function verifyJWT(token: string): Promise<SessionPayload | null> {
+export async function verifyJWT(token: string): Promise<{ payload: SessionPayload | null; error?: 'TOKEN_EXPIRED' | 'INVALID_TOKEN' }> {
   try {
     const { payload } = await jwtVerify(token, secret);
-    return payload as unknown as SessionPayload;
-  } catch (_err) {
-    return null;
+    return { payload: payload as unknown as SessionPayload };
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'ERR_JWT_EXPIRED') {
+      return { payload: null, error: 'TOKEN_EXPIRED' };
+    }
+    return { payload: null, error: 'INVALID_TOKEN' };
   }
 }
 

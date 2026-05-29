@@ -12,7 +12,16 @@ import { handleApiError } from '@/lib/api-utils';
 export async function GET() {
   try {
     const userId = (await headers()).get('x-user-id');
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED' 
+        }, 
+        { status: 401 }
+      );
+    }
 
     const cards = await db
       .select()
@@ -28,7 +37,16 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const userId = (await headers()).get('x-user-id');
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!userId) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'Authentication required',
+          code: 'UNAUTHORIZED' 
+        }, 
+        { status: 401 }
+      );
+    }
 
     const body = await req.json();
     const validatedData = cardSchema.parse(body);
