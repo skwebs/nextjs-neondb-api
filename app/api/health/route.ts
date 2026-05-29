@@ -1,6 +1,8 @@
 import { db } from '@/db';
 import { NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Basic health check that doesn't depend on a specific table

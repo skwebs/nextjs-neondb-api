@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from '@/db';
 import { creditCards } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -67,3 +68,4 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

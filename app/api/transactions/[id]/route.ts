@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from '@/db';
 import { transactions, billingCycles } from '@/db/schema';
 import { getOrCreateCycle } from '@/lib/billing-cycles';
@@ -142,3 +143,4 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
