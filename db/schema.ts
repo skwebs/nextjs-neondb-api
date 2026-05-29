@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, decimal, pgEnum, uuid, index } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, integer, decimal, pgEnum, uuid, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
@@ -70,10 +70,33 @@ export const transactions = pgTable('transactions', {
   dateIdx: index('tx_date_idx').on(table.transactionDatetime),
 }));
 
+export const sessions = pgTable('sessions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  refreshToken: text('refresh_token').notNull().unique(),
+  userAgent: text('user_agent'),
+  ipAddress: text('ip_address'),
+  expiresAt: timestamp('expires_at').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index('session_user_id_idx').on(table.userId),
+  tokenIdx: index('session_token_idx').on(table.refreshToken),
+}));
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   creditCards: many(creditCards),
   transactions: many(transactions),
+  sessions: many(sessions),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
 }));
 
 export const creditCardsRelations = relations(creditCards, ({ one, many }) => ({

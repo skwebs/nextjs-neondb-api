@@ -1,17 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import { signJWT } from '@/lib/auth';
+import { generateTokens } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+// import { z } from 'zod';
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-});
+import { loginSchema } from '@/lib/schemas/auth';
+import { handleApiError } from '@/lib/api-utils';
 
 export async function POST(req: Request) {
   try {
@@ -33,27 +31,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = await signJWT({ userId: user.id });
+    const userAgent = req.headers.get('user-agent') || undefined;
+    const ipAddress = req.headers.get('x-forwarded-for') || undefined;
+
+    const { accessToken, refreshToken } = await generateTokens(user.id, userAgent, ipAddress);
 
     const response = NextResponse.json({ 
       message: 'Login successful',
+      accessToken,
+      refreshToken,
       user: { id: user.id, email: user.email, name: user.name }
     });
 
-    (await cookies()).set('token', token, {
+    (await cookies()).set('token', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24, // 24 hours
+      maxAge: 60 * 60 * 24, // 24 hours (Keep cookie for web)
       path: '/',
     });
 
     return response;
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 

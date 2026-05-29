@@ -1,19 +1,14 @@
 export const dynamic = 'force-dynamic';
 import { db } from '@/db';
-import { transactions, billingCycles } from '@/db/schema';
+import { transactions } from '@/db/schema';
 import { getOrCreateCycle } from '@/lib/billing-cycles';
 import { and, eq, desc, inArray, gte, lte } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+// import { z } from 'zod';
 
-const transactionSchema = z.object({
-  cardId: z.string().uuid(),
-  description: z.string().min(1),
-  amount: z.string().regex(/^\d+(\.\d{1,2})?$/), // decimal as string from client
-  transactionDatetime: z.string().datetime(),
-  settlementDate: z.string().datetime().optional().nullable(),
-});
+import { transactionSchema } from '@/lib/schemas/transactions';
+import { handleApiError } from '@/lib/api-utils';
 
 export async function GET(req: Request) {
   try {
@@ -26,7 +21,7 @@ export async function GET(req: Request) {
     const billingCycleId = searchParams.get('billingCycleId');
     const month = searchParams.get('month');
     const year = searchParams.get('year') || new Date().getFullYear().toString();
-    const week = searchParams.get('week');
+    // const week = searchParams.get('week');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const periodType = searchParams.get('periodType') || 'transaction'; // 'transaction' or 'settlement'
@@ -37,7 +32,7 @@ export async function GET(req: Request) {
 
     const dateColumn = periodType === 'settlement' ? transactions.settlementDate : transactions.transactionDatetime;
 
-    let conditions = [eq(transactions.userId, userId)];
+    const conditions = [eq(transactions.userId, userId)];
 
     if (cardId) conditions.push(eq(transactions.cardId, cardId));
     if (cardIds && cardIds.length > 0) conditions.push(inArray(transactions.cardId, cardIds));
@@ -66,8 +61,8 @@ export async function GET(req: Request) {
       page,
       limit
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -109,11 +104,8 @@ export async function POST(req: Request) {
       .returning();
 
     return NextResponse.json({ transaction: newTransaction });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 

@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { billingCycles, creditCards } from '@/db/schema';
-import { and, eq, lte, gte } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { addDays, setDate, subMonths, addMonths, startOfDay, endOfDay } from 'date-fns';
 
 /**

@@ -1,21 +1,23 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyJWT } from '@/lib/auth';
+import { verifyJWT, getToken } from '@/lib/auth';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Public routes
   if (
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/register' ||
+    pathname === '/api/auth/refresh' ||
+    pathname === '/api/auth/logout' ||
     pathname === '/api/health' ||
     !pathname.startsWith('/api')
   ) {
     return NextResponse.next();
   }
 
-  const token = request.cookies.get('token')?.value;
+  const token = getToken(request);
 
   if (!token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

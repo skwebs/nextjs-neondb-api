@@ -4,14 +4,10 @@ import { creditCards } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+// import { z } from 'zod';
 
-const updateCardSchema = z.object({
-  name: z.string().min(1).optional(),
-  last4Digits: z.string().length(4).regex(/^\d+$/).optional(),
-  statementDay: z.number().min(1).max(31).optional(),
-  dueDayOffset: z.number().min(1).max(60).optional(),
-});
+import { updateCardSchema } from '@/lib/schemas/cards';
+import { handleApiError } from '@/lib/api-utils';
 
 export async function PATCH(
   req: Request,
@@ -36,11 +32,8 @@ export async function PATCH(
     }
 
     return NextResponse.json({ card: updatedCard });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -64,8 +57,8 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: 'Card deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 

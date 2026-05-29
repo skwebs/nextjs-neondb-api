@@ -1,21 +1,24 @@
 export const dynamic = 'force-dynamic';
 import { db } from '@/db';
 import { users } from '@/db/schema';
-import { getSession } from '@/lib/auth';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { handleApiError } from '@/lib/api-utils';
+
+import { headers } from 'next/headers';
+
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session) {
+    const userId = (await headers()).get('x-user-id');
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const [user] = await db
       .select({ id: users.id, email: users.email, name: users.name })
       .from(users)
-      .where(eq(users.id, session.userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (!user) {
@@ -23,8 +26,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ user });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 

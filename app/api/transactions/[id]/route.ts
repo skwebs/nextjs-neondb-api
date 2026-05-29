@@ -5,14 +5,10 @@ import { getOrCreateCycle } from '@/lib/billing-cycles';
 import { and, eq } from 'drizzle-orm';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
+// import { z } from 'zod';
 
-const updateTransactionSchema = z.object({
-  description: z.string().min(1).optional(),
-  amount: z.string().regex(/^\d+(\.\d{1,2})?$/).optional(),
-  transactionDatetime: z.string().datetime().optional(),
-  settlementDate: z.string().datetime().optional().nullable(),
-});
+import { updateTransactionSchema } from '@/lib/schemas/transactions';
+import { handleApiError } from '@/lib/api-utils';
 
 export async function PATCH(
   req: Request,
@@ -91,11 +87,8 @@ export async function PATCH(
       .returning();
 
     return NextResponse.json({ transaction: updated });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.flatten().fieldErrors }, { status: 400 });
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 
@@ -139,8 +132,8 @@ export async function DELETE(
       .where(eq(transactions.id, id));
 
     return NextResponse.json({ message: 'Transaction deleted successfully' });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
 

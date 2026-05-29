@@ -1,7 +1,9 @@
-import { db } from '@/db';
+// import { db } from '@/db';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+
+import { handleApiError } from '@/lib/api-utils';
 
 export async function GET() {
   try {
@@ -11,10 +13,7 @@ export async function GET() {
       message: 'API is healthy',
       database: 'connected'
     });
-  } catch (error: any) {
-    return NextResponse.json({ 
-      status: 'error', 
-      message: error.message 
-    }, { status: 500 });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
